@@ -1,0 +1,50 @@
+name: Build ZingSpeed Tweak
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Theos
+      run: |
+        export THEOS=$HOME/theos
+        git clone --recursive https://github.com/theos/theos.git $THEOS
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+        echo "$HOME/theos/bin" >> $GITHUB_PATH
+
+    - name: Install ldid and dpkg
+      run: |
+        brew install ldid dpkg
+
+    - name: Build Tweak
+      run: |
+        make clean package FINALPACKAGE=1
+      env:
+        THEOS: ${{ env.THEOS }}
+
+    - name: Upload Deb
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZingSpeed-Deb
+        path: packages/*.deb
+
+    - name: Extract Dylib
+      run: |
+        mkdir -p output_dylib
+        find .theos/obj -name "ZingSpeedTweakIOS.dylib" -exec cp {} output_dylib/ \;
+
+    - name: Upload Dylib
+      uses: actions/upload-artifact@v4
+      with:
+        name: ZingSpeed-Dylib
+        path: output_dylib/*.dylib
